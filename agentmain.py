@@ -32,11 +32,13 @@ class GeneraticAgent:
         llm_sessions = []
         for k, cfg in mykeys.items():
             if not any(x in k for x in ['api', 'config', 'cookie']): continue
-            if 'claude' in k: llm_sessions += [ClaudeSession(api_key=cfg['apikey'], api_base=cfg['apibase'], model=cfg['model'])]
-            if 'oai' in k: llm_sessions += [LLMSession(api_key=cfg['apikey'], api_base=cfg['apibase'], model=cfg['model'], proxy=cfg.get('proxy'))]
-            if 'xai' in k: llm_sessions += [XaiSession(cfg, mykeys.get('proxy', ''))]
-            if 'sider' in k: llm_sessions += [SiderLLMSession(cfg, default_model=x) for x in \
+            try:
+                if 'claude' in k: llm_sessions += [ClaudeSession(api_key=cfg['apikey'], api_base=cfg['apibase'], model=cfg['model'])]
+                if 'oai' in k: llm_sessions += [LLMSession(api_key=cfg['apikey'], api_base=cfg['apibase'], model=cfg['model'], proxy=cfg.get('proxy'))]
+                if 'xai' in k: llm_sessions += [XaiSession(cfg, mykeys.get('proxy', ''))]
+                if 'sider' in k: llm_sessions += [SiderLLMSession(cfg, default_model=x) for x in \
                                     ["gemini-3.0-flash", "claude-haiku-4.5", "kimi-k2"]]
+            except: pass
         if len(llm_sessions) > 0: self.llmclient = ToolClient(llm_sessions, auto_save_tokens=True)
         else: self.llmclient = None
         self.lock = threading.Lock()
@@ -80,8 +82,8 @@ class GeneraticAgent:
             handler = GenericAgentHandler(None, self.history, './temp')
             if self.handler and self.handler.key_info: 
                 handler.key_info = self.handler.key_info
-                if '如需可更新工作记忆去除无用部分' not in handler.key_info:
-                    handler.key_info += '\n如需可更新工作记忆去除无用部分\n'
+                if '清除工作记忆' not in handler.key_info:
+                    handler.key_info += '\n[SYSTEM] 如果是新任务，请先更新或清除工作记忆\n'
             self.handler = handler
             self.llmclient.backend = self.llmclient.backends[self.llm_no]
             gen = agent_runner_loop(self.llmclient, sys_prompt, raw_query, 

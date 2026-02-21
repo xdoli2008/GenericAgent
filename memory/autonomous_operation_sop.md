@@ -12,9 +12,9 @@
 
 ## 报告目录与规则
 
-⚠️ 报告目录唯一位置：`./autonomous_reports/`，history.txt 在此目录内，禁止写到其他任何路径。
+⚠️ 历史记录唯一位置：`./autonomous_reports/history.txt`， 在此目录内，禁止写到其他任何路径。
 报告存于 `./autonomous_reports/`，文件名 `RXX_简短描述.md`（XX从 history.txt 推断自增）。
-完成后在 history.txt 首行 prepend 一条：`#XX | 日期 | 类型 | 主题 | 结论`（严格单行）。已处理报告归档至 `archived/`。
+完成后在 history.txt 首行 prepend 一条：`RXX | 日期 | 类型 | 主题 | 结论`（严格单行）。已处理报告归档至 `archived/`。
 
 权限边界：
 - 无需批准：只读探测、cwd 内写操作/脚本实验
