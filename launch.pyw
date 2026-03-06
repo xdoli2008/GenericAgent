@@ -15,7 +15,8 @@ def get_screen_width():
 
 def start_streamlit(port):
     global proc
-    cmd = [sys.executable, "-m", "streamlit", "run", "stapp.py", "--server.port", str(port), "--server.address", "localhost", "--server.headless", "true", "--theme.base", "dark"]  # 暗黑模式
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    cmd = [sys.executable, "-m", "streamlit", "run", os.path.join(script_dir, "stapp.py"), "--server.port", str(port), "--server.address", "localhost", "--server.headless", "true", "--theme.base", "dark"]  # 暗黑模式
     proc = subprocess.Popen(cmd)
     atexit.register(proc.kill)
 
@@ -72,7 +73,8 @@ if __name__ == '__main__':
     threading.Thread(target=start_streamlit, args=(port,), daemon=True).start()
 
     if args.tg:
-        tgproc = subprocess.Popen([sys.executable, "tgapp.py"], creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        tgproc = subprocess.Popen([sys.executable, os.path.join(script_dir, "tgapp.py")], creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0)
         atexit.register(tgproc.kill)
         print('[Launch] Telegram Bot started')
     else: print('[Launch] Telegram Bot not enabled (use --tg to start)')
@@ -80,7 +82,8 @@ if __name__ == '__main__':
     if not args.no_sched:
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM); sock.bind(('127.0.0.1', 45762)); sock.listen(1)
-            scheduler_proc = subprocess.Popen([sys.executable, "agentmain.py", "--scheduled", "--llm_no", str(args.llm_no)], creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0); 
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            scheduler_proc = subprocess.Popen([sys.executable, os.path.join(script_dir, "agentmain.py"), "--scheduled", "--llm_no", str(args.llm_no)], creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0); 
             atexit.register(lambda: (scheduler_proc.kill(), sock.close()))
             print('[Launch] Task Scheduler started')
         except OSError:

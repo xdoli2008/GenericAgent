@@ -16,7 +16,8 @@ def code_run(code, code_type="python", timeout=60, cwd=None, code_cwd=None, stop
     """
     preview = (code[:60].replace('\n', ' ') + '...') if len(code) > 60 else code.strip()
     yield f"[Action] Running {code_type} in {os.path.basename(cwd)}: {preview}\n"
-    cwd = cwd or os.path.join(os.getcwd(), 'temp'); tmp_path = None
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    cwd = cwd or os.path.join(script_dir, 'temp'); tmp_path = None
     if code_type == "python":
         tmp_file = tempfile.NamedTemporaryFile(suffix=".ai.py", delete=False, mode='w', encoding='utf-8', dir=code_cwd)
         tmp_file.write(code)
@@ -150,7 +151,8 @@ def format_error(e):
 
 def log_memory_access(path):
     if 'memory' not in path: return
-    stats_file = 'memory/file_access_stats.json'
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    stats_file = os.path.join(script_dir, 'memory/file_access_stats.json')
     try:
         with open(stats_file, 'r', encoding='utf-8') as f: stats = json.load(f)
     except: stats = {}
@@ -493,8 +495,9 @@ class GenericAgentHandler(BaseHandler):
 def get_global_memory():
     prompt = "\n"
     try:
-        with open('memory/global_mem_insight.txt', 'r', encoding='utf-8') as f: insight = f.read()
-        with open('assets/insight_fixed_structure.txt', 'r', encoding='utf-8') as f: structure = f.read()
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(script_dir, 'memory/global_mem_insight.txt'), 'r', encoding='utf-8') as f: insight = f.read()
+        with open(os.path.join(script_dir, 'assets/insight_fixed_structure.txt'), 'r', encoding='utf-8') as f: structure = f.read()
         prompt += f"\n[Memory]\n"
         prompt += f'cwd = {os.path.abspath("./temp")} （用./引用）\n'
         prompt += structure + '\n../memory/global_mem_insight.txt:\n'

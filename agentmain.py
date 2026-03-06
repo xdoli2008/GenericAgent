@@ -9,7 +9,8 @@ from sidercall import SiderLLMSession, LLMSession, ToolClient, ClaudeSession, Xa
 from agent_loop import agent_runner_loop, StepOutcome, BaseHandler
 from ga import GenericAgentHandler, smart_format, get_global_memory, format_error
 
-with open('assets/tools_schema.json', 'r', encoding='utf-8') as f:
+script_dir = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(script_dir, 'assets/tools_schema.json'), 'r', encoding='utf-8') as f:
     TS = f.read()
     TOOLS_SCHEMA = json.loads(TS if os.name == 'nt' else TS.replace('powershell', 'bash'))
 
@@ -24,14 +25,16 @@ if not os.path.exists('assets/tmwd_cdp_bridge/config.js'):
         f.write(f"const TID = '__ljq_{hex(random.randint(0, 99999999))[2:8]}';")
 
 def get_system_prompt():
-    with open('assets/sys_prompt.txt', 'r', encoding='utf-8') as f: prompt = f.read()
+    with open(os.path.join(script_dir, 'assets/sys_prompt.txt'), 'r', encoding='utf-8') as f: prompt = f.read()
     prompt += f"\nToday: {time.strftime('%Y-%m-%d %a')}\n"
     prompt += get_global_memory()
     return prompt
 
 class GeneraticAgent:
     def __init__(self):
-        if not os.path.exists('temp'): os.makedirs('temp')
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        temp_dir = os.path.join(script_dir, 'temp')
+        if not os.path.exists(temp_dir): os.makedirs(temp_dir)
         from sidercall import mykeys
         llm_sessions = []
         for k, cfg in mykeys.items():
@@ -89,7 +92,8 @@ class GeneraticAgent:
             self.history.append(f"[USER]: {rquery}")
             
             sys_prompt = get_system_prompt()
-            handler = GenericAgentHandler(None, self.history, './temp')
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            handler = GenericAgentHandler(None, self.history, os.path.join(script_dir, 'temp'))
             if self.handler and self.handler.key_info: 
                 handler.key_info = self.handler.key_info
                 if '清除工作记忆' not in handler.key_info:
@@ -136,8 +140,9 @@ if __name__ == '__main__':
     threading.Thread(target=agent.run, daemon=True).start()
 
     if args.task:
-        d = f'temp/{args.task}'; rp = f'{d}/reply.txt'; nround = ''
-        with open(f'{d}/input.txt', encoding='utf-8') as f: raw = f.read()
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        d = os.path.join(script_dir, f'temp/{args.task}'); rp = os.path.join(d, 'reply.txt'); nround = ''
+        with open(os.path.join(d, 'input.txt'), encoding='utf-8') as f: raw = f.read()
         while True:
             dq = agent.put_task(raw, source='task')
             while 'done' not in (item := dq.get(timeout=120)): 
@@ -173,23 +178,27 @@ if __name__ == '__main__':
             except Exception as e:
                 if once: raise
                 print(f'[Reflect] drain error: {e}'); result = f'[ERROR] {e}'
-            open('./temp/reflect.log', 'a', encoding='utf-8').write(f'[{datetime.now():%m-%d %H:%M}]\n{result}\n\n')
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            open(os.path.join(script_dir, './temp/reflect.log'), 'a', encoding='utf-8').write(f'[{datetime.now():%m-%d %H:%M}]\n{result}\n\n')
             if on_done:
                 try: on_done(result)
                 except Exception as e: print(f'[Reflect] on_done error: {e}')
             if once: print('[Reflect] ONCE=True, exiting.'); break
     elif args.scheduled: 
+        script_dir = os.path.dirname(os.path.abspath(__file__))
         def drain(dq, tag):
             while 'done' not in (item := dq.get()): pass
-            open('./temp/scheduler.log', 'a', encoding='utf-8').write(f'[{datetime.now():%m-%d %H:%M}] {tag}\n{item["done"]}\n\n')
+            open(os.path.join(script_dir, './temp/scheduler.log'), 'a', encoding='utf-8').write(f'[{datetime.now():%m-%d %H:%M}] {tag}\n{item["done"]}\n\n')
         while True:
             time.sleep(55 + random.random() * 10)
             now = datetime.now()
-            if not os.path.isdir('./sche_tasks/pending'): continue
-            for f in os.listdir('./sche_tasks/pending'):
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            sche_tasks_dir = os.path.join(script_dir, './sche_tasks/pending')
+            if not os.path.isdir(sche_tasks_dir): continue
+            for f in os.listdir(sche_tasks_dir):
                 m = re.match(r'(\d{4}-\d{2}-\d{2})_(\d{4})_', f)
                 if m and now >= datetime.strptime(f'{m[1]} {m[2]}', '%Y-%m-%d %H%M'):
-                    raw = open(f'./sche_tasks/pending/{f}', encoding='utf-8').read()
+                    raw = open(os.path.join(sche_tasks_dir, f), encoding='utf-8').read()
                     dq = agent.put_task(f'按scheduled_task_sop执行任务文件 ../sche_tasks/pending/{f}（立刻移到running）\n内容：\n{raw}', source='scheduler')
                     threading.Thread(target=drain, args=(dq, f), daemon=True).start()
                     break

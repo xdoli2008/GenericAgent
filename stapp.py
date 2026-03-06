@@ -80,18 +80,19 @@ def agent_backend_stream(prompt):
 
 if "messages" not in st.session_state: st.session_state.messages = []
 for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]): st.markdown(msg["content"])
+    with st.chat_message(msg["role"]): st.markdown(msg["content"], unsafe_allow_html=True)
 
 if prompt := st.chat_input("请输入指令"):
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"): st.markdown(prompt)
+    #允许消息内容中包含 HTML 代码并直接渲染，但注意这会有 XSS 安全风险，仅在内容可信时使用
+    with st.chat_message("user"): st.markdown(prompt, unsafe_allow_html=True)
 
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         response = ''
         for response in agent_backend_stream(prompt):
-            message_placeholder.markdown(response + "▌")
-        message_placeholder.markdown(response)
+            message_placeholder.markdown(response + "▌", unsafe_allow_html=True)
+        message_placeholder.markdown(response, unsafe_allow_html=True)
     st.session_state.messages.append({"role": "assistant", "content": response})
     st.session_state.last_reply_time = int(time.time())
 

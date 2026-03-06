@@ -15,7 +15,8 @@ def generate_tool_schema():
     """
     通过代码内省，将 Handler 的逻辑映射为高语义的工具描述。
     """
-    with open('../ga.py', 'r', encoding='utf-8') as f:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(script_dir, '../ga.py'), 'r', encoding='utf-8') as f:
         ga_code = f.read()
     # 极简且具备高度概括能力的元 Prompt
     meta_prompt = f"""
@@ -69,7 +70,8 @@ def generate_tool_schema():
         final_schema = json.loads(clean_json)
         
         if final_schema:
-            with open('tools_schema.json', 'w', encoding='utf-8') as f:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            with open(os.path.join(script_dir, 'tools_schema.json'), 'w', encoding='utf-8') as f:
                 json.dump(final_schema, f, indent=2, ensure_ascii=False)
             print("✅ 成功从代码内省生成 Schema 并持久化。")
         return final_schema
@@ -79,7 +81,10 @@ def generate_tool_schema():
         return None
 
 
-def make_system_prompt(ga_code_path='../ga.py'):
+def make_system_prompt(ga_code_path=None):
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    if ga_code_path is None:
+        ga_code_path = os.path.join(script_dir, '../ga.py')
     with open(ga_code_path, 'r', encoding='utf-8') as f:
         ga_code = f.read()
 
@@ -117,7 +122,7 @@ def make_system_prompt(ga_code_path='../ga.py'):
     print("📝 生成的 System Prompt 内容如下：\n")
     print(system_prompt_content)
     clean_content = re.sub(r'<[^>]+>', '', system_prompt_content)
-    with open('sys_prompt.txt', 'w', encoding='utf-8') as f:
+    with open(os.path.join(script_dir, 'sys_prompt.txt'), 'w', encoding='utf-8') as f:
         f.write(clean_content)
     return clean_content
 
