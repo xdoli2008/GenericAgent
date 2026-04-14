@@ -1,6 +1,7 @@
 import os, json, re, time, requests, sys, threading, urllib3, base64, mimetypes, uuid
 from datetime import datetime
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+_RESP_CACHE_KEY = str(uuid.uuid4()) 
 
 def _load_mykeys():
     try:
@@ -274,7 +275,7 @@ def _openai_stream(api_base, api_key, messages, model, api_mode='chat_completion
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "Accept": "text/event-stream"}
     if api_mode == "responses":
         url = auto_make_url(api_base, "responses")
-        payload = {"model": model, "input": _to_responses_input(messages), "stream": True}
+        payload = {"model": model, "input": _to_responses_input(messages), "stream": True, "prompt_cache_key": _RESP_CACHE_KEY}
         if reasoning_effort: payload["reasoning"] = {"effort": reasoning_effort}
     else:
         url = auto_make_url(api_base, "chat/completions")
@@ -446,6 +447,7 @@ class BaseSession:
         self.api_mode = 'responses' if mode in ('responses', 'response') else 'chat_completions'
         self.temperature = cfg.get('temperature', 1.0)
         self.max_tokens = cfg.get('max_tokens', 8192)
+        self.stream = cfg.get('stream', True)
     def _apply_claude_thinking(self, payload):
         if self.thinking_type:
             thinking = {"type": self.thinking_type}
@@ -542,7 +544,7 @@ class NativeClaudeSession(BaseSession):
             "user-agent": "claude-cli/2.1.90 (external, cli)", "x-app": "cli"}
         if self.api_key.startswith("sk-ant-"): headers["x-api-key"] = self.api_key
         else: headers["authorization"] = f"Bearer {self.api_key}"
-        payload = {"model": model, "messages": messages, "temperature": self.temperature, "max_tokens": self.max_tokens, "stream": True}
+        payload = {"model": model, "messages": messages, "temperature": self.temperature, "max_tokens": self.max_tokens, "stream": self.stream}
         self._apply_claude_thinking(payload)
         payload["metadata"] = {"user_id": json.dumps({"device_id": self._device_id, "account_uuid": self._account_uuid, "session_id": self._session_id}, separators=(',', ':'))}
         if self.tools:
@@ -559,9 +561,17 @@ class NativeClaudeSession(BaseSession):
             messages[idx] = {**messages[idx], "content": list(messages[idx]["content"])}
             messages[idx]["content"][-1] = dict(messages[idx]["content"][-1], cache_control={"type": "ephemeral"})
         try:
-            resp = requests.post(auto_make_url(self.api_base, "messages")+'?beta=true', headers=headers, json=payload, stream=True, timeout=(self.connect_timeout, self.read_timeout))
-            if resp.status_code != 200: raise Exception(f"HTTP {resp.status_code} {resp.content.decode('utf-8', errors='replace')[:500]}")
-            return (yield from _parse_claude_sse(resp.iter_lines())) or []
+            with requests.post(auto_make_url(self.api_base, "messages")+'?beta=true', headers=headers, json=payload, stream=self.stream, timeout=(self.connect_timeout, self.read_timeout)) as resp:
+                if resp.status_code != 200: raise Exception(f"HTTP {resp.status_code} {resp.content.decode('utf-8', errors='replace')[:500]}")
+                if self.stream: return (yield from _parse_claude_sse(resp.iter_lines())) or []
+                else:
+                    data = resp.json(); content_blocks = data.get("content", [])
+                    usage = data.get("usage", {})
+                    print(f"[Cache] input={usage.get('input_tokens',0)} creation={usage.get('cache_creation_input_tokens',0)} read={usage.get('cache_read_input_tokens',0)}")
+                    for b in content_blocks:
+                        if b.get("type") == "text": yield b.get("text", "")
+                        elif b.get("type") == "thinking": yield ""
+                    return content_blocks
         except Exception as e:
             yield (err := f"Error: {e}")
             return [{"type": "text", "text": err}]
