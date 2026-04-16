@@ -173,13 +173,19 @@ if prompt := st.chat_input("请输入指令"):
     with st.chat_message("user"): st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        slot = st.empty(); response = ''
+        frozen = 0; live = st.empty(); response = ''
         CURSOR = ' ▌'
         for response in agent_backend_stream(prompt):
-            # 每轮整块重画（含 heartbeat 空转）：segments 不变时 Streamlit diff 零变更 → 不闪烁；
-            # 而 slot.container() 调用本身保证 Streamlit 能抛 StopException（abort 生效）
-            with slot.container(): render_segments(fold_turns(response), suffix=CURSOR)
-        with slot.container(): render_segments(fold_turns(response))  # 收尾去光标
+            segs = fold_turns(response)
+            n_done = max(0, len(segs) - 1)
+            while frozen < n_done:
+                with live.container(): render_segments([segs[frozen]])
+                live = st.empty(); frozen += 1
+            with live.container(): render_segments([segs[-1]], suffix=CURSOR)   # live 区域
+        segs = fold_turns(response)
+        for i in range(frozen, len(segs)):
+            with live.container(): render_segments([segs[i]])
+            if i < len(segs) - 1: live = st.empty()
     st.session_state.messages.append({"role": "assistant", "content": response})
     st.session_state.last_reply_time = int(time.time())
 
