@@ -5,6 +5,8 @@
 - 坑(rapid): 无文字时 result 返回 None 而非空列表
 - 坑: enhance 放大+高对比度处理，对清晰文字有害，默认关闭
 - 坑(远程桌面): ImageGrab/mss 在 RDP 断开后截图全黑，用 ocr_window(hwnd) 代替
+- 坑(安装): Python版本升级后C扩展残留旧版本dll(如python310.dll在3.12上报冲突)
+  修复: pip install --force-reinstall pyclipper Shapely opencv-python-headless onnxruntime rapidocr_onnxruntime
 """
 import re
 from PIL import ImageGrab, Image, ImageEnhance

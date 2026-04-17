@@ -40,7 +40,7 @@ result = ask_vision("image.png", prompt="描述图片内容")  # 路径或PIL Im
 
 ## 关键风险与坑点 (L3 Caveats)
 - **无重试机制**: `vision_api.py` 内部未实现 API 错误重试（如 503、超时）。在自动化流程中使用时，**必须在上层代码手动实现重试逻辑**（建议指数退避），否则偶发网络波动会导致任务直接崩溃中断。
-- **API Config**: 当前使用 `claude_config141`(ncode.vkm2.com, 已验证)。备选可用: `native_claude_config2/84/5535`。失效时直接改 `vision_api.py` 中的 `cfg = mk.claude_configXXX`。
+- **API Config**: 当前自动遍历 mykey 中所有 config（Claude原生+OAI格式），优先 native_claude_config1，备选 native_oai_config。失效时改 `vision_api.py` 中 `_get_cfg()` 的优先级列表。
 
 ---
 更新: 2025-07-18 | 修复oai_config导入+返回值统一str
