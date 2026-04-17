@@ -256,7 +256,7 @@ def _openai_stream(api_base, api_key, messages, model, api_mode='chat_completion
                    max_retries=0, connect_timeout=10, read_timeout=300, proxies=None):
     """Shared OpenAI-compatible streaming request with retry. Yields text chunks, returns list[content_block]."""
     ml = model.lower()
-    if 'kimi' in ml or 'moonshot' in ml: temperature = 1.0
+    if 'kimi' in ml or 'moonshot' in ml: temperature = 1
     elif 'minimax' in ml: temperature = max(0.01, min(temperature, 1.0))  # MiniMax requires temp in (0, 1]
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "Accept": "text/event-stream"}
     if api_mode == "responses":
@@ -266,7 +266,8 @@ def _openai_stream(api_base, api_key, messages, model, api_mode='chat_completion
     else:
         url = auto_make_url(api_base, "chat/completions")
         _stamp_oai_cache_markers(messages, model)
-        payload = {"model": model, "messages": messages, "temperature": temperature, "stream": True, "stream_options": {"include_usage": True}}
+        payload = {"model": model, "messages": messages, "stream": True, "stream_options": {"include_usage": True}}
+        if temperature != 1: payload["temperature"] = temperature
         if max_tokens: payload["max_tokens"] = max_tokens
         if reasoning_effort: payload["reasoning_effort"] = reasoning_effort
     if tools:
@@ -431,7 +432,7 @@ class BaseSession:
         self.thinking_budget_tokens = cfg.get('thinking_budget_tokens')
         mode = str(cfg.get('api_mode', 'chat_completions')).strip().lower().replace('-', '_')
         self.api_mode = 'responses' if mode in ('responses', 'response') else 'chat_completions'
-        self.temperature = cfg.get('temperature', 1.0)
+        self.temperature = cfg.get('temperature', 1)
         self.max_tokens = cfg.get('max_tokens', 8192)
         self.stream = cfg.get('stream', True)
     def _apply_claude_thinking(self, payload):
@@ -468,7 +469,8 @@ class BaseSession:
 class ClaudeSession(BaseSession):
     def raw_ask(self, messages):
         headers = {"x-api-key": self.api_key, "Content-Type": "application/json", "anthropic-version": "2023-06-01", "anthropic-beta": "prompt-caching-2024-07-31"}
-        payload = {"model": self.model, "messages": messages, "temperature": self.temperature, "max_tokens": self.max_tokens, "stream": True}
+        payload = {"model": self.model, "messages": messages, "max_tokens": self.max_tokens, "stream": True}
+        if self.temperature != 1: payload["temperature"] = self.temperature
         self._apply_claude_thinking(payload)
         if self.system: payload["system"] = [{"type": "text", "text": self.system, "cache_control": {"type": "persistent"}}]
         try:
@@ -530,7 +532,8 @@ class NativeClaudeSession(BaseSession):
             "user-agent": "claude-cli/2.1.90 (external, cli)", "x-app": "cli"}
         if self.api_key.startswith("sk-ant-"): headers["x-api-key"] = self.api_key
         else: headers["authorization"] = f"Bearer {self.api_key}"
-        payload = {"model": model, "messages": messages, "temperature": self.temperature, "max_tokens": self.max_tokens, "stream": self.stream}
+        payload = {"model": model, "messages": messages, "max_tokens": self.max_tokens, "stream": self.stream}
+        if self.temperature != 1: payload["temperature"] = self.temperature
         self._apply_claude_thinking(payload)
         payload["metadata"] = {"user_id": json.dumps({"device_id": self._device_id, "account_uuid": self._account_uuid, "session_id": self._session_id}, separators=(',', ':'))}
         if self.tools:

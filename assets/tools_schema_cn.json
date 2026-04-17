@@ -7,7 +7,7 @@
       "type": {"type": "string", "enum": ["python", "powershell"], "description": "代码类型", "default": "python"},
       "timeout": {"type": "integer", "description": "执行超时时间（秒）", "default": 60},
       "cwd": {"type": "string", "description": "工作目录，默认为当前工作目录"},
-      "inline_eval": {"type": "boolean", "description": "仅在明确要求时使用"}}}
+      "inline_eval": {"type": "boolean", "description": "不允许使用除非明确要求"}}}
   }},
   {"type": "function", "function": {
     "name": "file_read",

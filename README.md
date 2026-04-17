@@ -1,9 +1,12 @@
 <div align="center">
 <img src="assets/images/bar.jpg" width="880"/>
+
+<a href="https://trendshift.io/repositories/25944" target="_blank"><img src="https://trendshift.io/api/badge/repositories/25944" alt="lsdefine%2FGenericAgent | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+
 </div>
 
 <p align="center">
-  <a href="#english">English</a> | <a href="#chinese">中文</a>
+  <a href="#english">English</a> | <a href="#chinese">中文</a> | 📄 <a href="assets/GenericAgent_Technical_Report.pdf">Technical Report</a>
 </p>
 
 ---

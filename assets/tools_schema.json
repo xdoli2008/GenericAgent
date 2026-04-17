@@ -7,7 +7,7 @@
       "type": {"type": "string", "enum": ["python", "powershell"], "description": "Code type", "default": "python"},
       "timeout": {"type": "integer", "description": "in seconds", "default": 60},
       "cwd": {"type": "string", "description": "Working directory, defaults to cwd"},
-      "inline_eval": {"type": "boolean", "description": "Only when usage is explicitly specified."}}}
+      "inline_eval": {"type": "boolean", "description": "DO NOT USE except explicitly specified."}}}
   }},
   {"type": "function", "function": {
     "name": "file_read",

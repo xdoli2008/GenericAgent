@@ -96,28 +96,34 @@ class GeneraticAgent:
         self.task_queue.put({"query": query, "source": source, "images": images or [], "output": display_queue})
         return display_queue
 
+    # i know it is dangerous, but raw_query is dangerous enough it doesn't enlarge
+    def _handle_slash_cmd(self, raw_query, display_queue):
+        if not raw_query.startswith('/'): return raw_query
+        if _sm := re.match(r'/session\.(\w+)=(.*)', raw_query.strip()):
+            k, v = _sm.group(1), _sm.group(2)
+            vfile = os.path.join(script_dir, 'temp', v)
+            if os.path.isfile(vfile): v = open(vfile, encoding='utf-8').read().strip()
+            try: v = json.loads(v)  # cover number parsing
+            except (json.JSONDecodeError, ValueError): pass
+            setattr(self.llmclient.backend, k, v)
+            display_queue.put({'done': smart_format(f"✅ session.{k} = {repr(v)}", max_str_len=500), 'source': 'system'})
+            return None
+        if raw_query.strip() == '/resume':
+            return '简单看看model_responses中的最近几次对话结尾部分(除了本次)，分别简单总结一下让我选择，然后你简单阅读了解情况后作为我们接下来聊天的基础'
+        return raw_query
+
     def run(self):
         while True:
             task = self.task_queue.get()
             raw_query, source, images, display_queue = task["query"], task["source"], task.get("images") or [], task["output"]
-            if raw_query.startswith('/'):
-                if _sm := re.match(r'/session\.(\w+)=(.*)', raw_query.strip()):
-                    k, v = _sm.group(1), _sm.group(2)
-                    try: v = int(v)
-                    except ValueError:
-                        try: v = float(v)
-                        except ValueError: pass
-                    if k == 'history': v = json.loads(open(v, encoding='utf-8').read()) if os.path.exists(v) else []
-                    setattr(self.llmclient.backend, k, v)
-                    display_queue.put({'done': f"✅ session.{k} = {v!r}"})
-                    self.task_queue.task_done(); continue
-                if raw_query.strip() == '/resume':
-                    raw_query = '简单看看model_responses中的最近几次对话结尾部分(除了本次)，分别简单总结一下让我选择，然后你简单阅读了解情况后作为我们接下来聊天的基础'
+            raw_query = self._handle_slash_cmd(raw_query, display_queue)
+            if raw_query is None:
+                self.task_queue.task_done(); continue
             self.is_running = True
             rquery = smart_format(raw_query.replace('\n', ' '), max_str_len=200)
             self.history.append(f"[USER]: {rquery}")
             
-            sys_prompt = get_system_prompt()
+            sys_prompt = get_system_prompt() + getattr(self.llmclient.backend, 'extra_sys_prompt', '')
             script_dir = os.path.dirname(os.path.abspath(__file__))
             handler = GenericAgentHandler(self, self.history, os.path.join(script_dir, 'temp'))
             if self.handler and 'key_info' in self.handler.working: 

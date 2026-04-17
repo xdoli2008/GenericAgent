@@ -290,8 +290,9 @@ class GenericAgentHandler(BaseHandler):
             old_cwd = os.getcwd()
             try:
                 os.chdir(cwd)
-                try: result = repr(eval(code, ns))
-                except SyntaxError: exec(code, ns); result = ns.get('_r', 'OK')
+                try:
+                    try: result = repr(eval(code, ns))
+                    except SyntaxError: exec(code, ns); result = ns.get('_r', 'OK')
                 except Exception as e: result = f'Error: {e}'
             finally: os.chdir(old_cwd)
         else: result = yield from code_run(code, code_type, timeout, cwd, code_cwd=code_cwd, stop_signal=self.code_stop_signal)
